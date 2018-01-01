@@ -345,7 +345,7 @@ Adds state to a stateless counter
 
 ```tsx
 import * as React from 'react';
-import { Diff as Subtract } from 'react-redux-typescript';
+import { Diff } from 'utility-types';
 
 // These props will be subtracted from original component type
 interface WrappedComponentProps {
@@ -364,7 +364,7 @@ export const withState = <P extends WrappedComponentProps>(
     count: number;
   }
 
-  return class WithState extends React.Component<Subtract<P, WrappedComponentProps> & Props, State> {
+  return class WithState extends React.Component<Diff<P, WrappedComponentProps> & Props, State> {
     // Enhance component name for debugging and React-Dev-Tools
     static displayName = `withState(${WrappedComponent.name})`;
 
@@ -417,7 +417,7 @@ Adds error handling using componentDidCatch to any component
 
 ```tsx
 import * as React from 'react';
-import { Diff as Subtract } from 'react-redux-typescript';
+import { Diff } from 'utility-types';
 
 const MISSING_ERROR = 'Error was swallowed during propagation.';
 
@@ -433,7 +433,7 @@ export const withErrorBoundary = <P extends WrappedComponentProps>(
     error: Error | null | undefined;
   }
 
-  return class WithErrorBoundary extends React.Component<Subtract<P, WrappedComponentProps> & Props, State> {
+  return class WithErrorBoundary extends React.Component<Diff<P, WrappedComponentProps> & Props, State> {
     static displayName = `withErrorBoundary(${WrappedComponent.name})`;
 
     state: State = {
@@ -751,10 +751,10 @@ export const reducer = combineReducers<State, RootAction>({
   reduxCounter: (state = 0, action) => {
     switch (action.type) {
       case getType(actions.increment):
-        return state + 1;
+        return state + 1; // action is type: { type: "INCREMENT"; }
 
       case getType(actions.add):
-        return state + action.payload;
+        return state + action.payload; // action is type: { type: "ADD"; payload: number; }
 
       default:
         return state;
@@ -807,7 +807,7 @@ Can be imported in various layers receiving or sending redux actions like: reduc
 ```tsx
 // RootActions
 import { RouterAction, LocationChangeAction } from 'react-router-redux';
-import { getReturnOfExpression } from 'react-redux-typescript';
+import { call } from 'utility-types';
 
 import { actions as countersAC } from '@src/redux/counters';
 import { actions as todosAC } from '@src/redux/todos';
@@ -819,8 +819,7 @@ export const allActions = {
   ...toastsAC,
 };
 
-const returnOfActions =
-  Object.values(allActions).map(getReturnOfExpression);
+const returnOfActions = Object.values(allActions).map(call);
 type AppAction = typeof returnOfActions[number];
 type ReactRouterAction = RouterAction | LocationChangeAction;
 
@@ -878,6 +877,8 @@ export default store;
 
 ### "redux-observable"
 
+Use `isActionOf` helper to filter actions and to narrow `RootAction` union type to a specific "action type" down the stream.
+
 ```tsx
 import { combineEpics, Epic } from 'redux-observable';
 import { isActionOf } from 'typesafe-actions';
@@ -892,7 +893,7 @@ const TOAST_LIFETIME = 2000;
 const addTodoToast: Epic<RootAction, RootState> =
   (action$, store) => action$
     .filter(isActionOf(allActions.addTodo))
-    .concatMap((action) => {
+    .concatMap((action) => { // action is type: { type: "ADD_TODO"; payload: string; }
       const toast = { id: v4(), text: action.payload };
 
       const addToast$ = Observable.of(actions.addToast(toast));
@@ -968,7 +969,9 @@ export type Actions = {
     type: typeof ADD,
     payload: number, 
   }, 
-}; 
+};
+
+export type RootAction = Actions[keyof Actions];
 
 export const actions = { 
   increment: (): Actions[typeof INCREMENT] => ({ 
@@ -982,6 +985,7 @@ export const actions = {
 ```
 
 [⇧ back to top](#table-of-contents)
+
 ---
 
 # Tools
